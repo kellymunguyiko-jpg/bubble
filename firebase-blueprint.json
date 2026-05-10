@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Public profile for chat users",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user" },
+        "displayName": { "type": "string", "description": "User's public name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "URL to profile picture" },
+        "status": { "type": "string", "enum": ["online", "offline"], "description": "Current online status" },
+        "lastSeen": { "type": "string", "format": "date-time", "description": "Last timestamp of activity" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created" }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "Chat": {
+      "title": "Chat Session",
+      "description": "A conversation between two or more users",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "description": "List of user UIDs in the chat" },
+        "lastMessage": { "type": "object", "description": "Snapshot of the most recent message" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last time the chat was updated" }
+      },
+      "required": ["participants", "updatedAt"]
+    },
+    "Message": {
+      "title": "Chat Message",
+      "description": "An individual message within a chat",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The text content of the message" },
+        "senderId": { "type": "string", "description": "UID of the sender" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent" },
+        "mediaUrl": { "type": "string", "description": "URL for shared media" },
+        "mediaType": { "type": "string", "enum": ["image", "video", "voice"], "description": "Type of media" }
+      },
+      "required": ["text", "senderId", "timestamp"]
+    },
+    "Group": {
+      "title": "Chat Group",
+      "description": "A group channel for multiple users to interact",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the group" },
+        "description": { "type": "string", "description": "Description of the group" },
+        "creatorId": { "type": "string", "description": "UID of the creator" },
+        "followers": { "type": "array", "description": "List of user UIDs following the group" }
+      },
+      "required": ["name", "creatorId"]
+    },
+    "Post": {
+      "title": "Group Post",
+      "description": "Media post within a group",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string", "description": "ID of the parent group" },
+        "authorId": { "type": "string", "description": "UID of the author" },
+        "mediaUrl": { "type": "string", "description": "URL for shared media" },
+        "mediaType": { "type": "string", "enum": ["image", "video"], "description": "Type of media" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the post was created" }
+      },
+      "required": ["groupId", "authorId", "mediaUrl", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/following/{followingId}": {
+      "schema": "User",
+      "description": "Users followed by this user"
+    },
+    "/chats/{chatId}": {
+      "schema": "Chat",
+      "description": "Conversations between users"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages within a conversation"
+    },
+    "/groups/{groupId}": {
+      "schema": "Group",
+      "description": "Groups for social connection"
+    },
+    "/groups/{groupId}/posts/{postId}": {
+      "schema": "Post",
+      "description": "Posts within a group"
+    }
+  }
+}

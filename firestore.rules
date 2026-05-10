@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // --------------------------------------------------------------------------
+    // Globals / Helpers
+    // --------------------------------------------------------------------------
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return request.auth.token.email_verified == true; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Helper: Checks if the user is a participant of a chat
+    function isChatParticipant(chatId) {
+      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+    }
+
+    // Default deny
+    match /{document=**} { allow read, write: if false; }
+
+    // User Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+      
+      match /following/{followingId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Chats (Direct & Group)
+    match /chats/{chatId} {
+      allow get: if isSignedIn() && (request.auth.uid in resource.data.participants);
+      allow list: if isSignedIn() && (request.auth.uid in resource.data.participants);
+      allow create: if isSignedIn() && incoming().participants.hasAll([request.auth.uid]);
+      allow update: if isSignedIn() && (request.auth.uid in existing().participants);
+      
+      match /messages/{messageId} {
+        allow get: if isChatParticipant(chatId);
+        allow list: if isChatParticipant(chatId);
+        allow create: if isChatParticipant(chatId) && incoming().senderId == request.auth.uid;
+        allow delete: if isChatParticipant(chatId) && (existing().senderId == request.auth.uid || get(/databases/$(database)/documents/chats/$(chatId)).data.creatorId == request.auth.uid);
+      }
+    }
+
+    // Social Feed Posts (Top-level Statuses)
+    match /posts/{postId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && incoming().authorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes'])) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount'])) ||
+        (existing().authorId == request.auth.uid && incoming().authorId == request.auth.uid)
+      );
+      allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && incoming().authorId == request.auth.uid;
+        allow delete: if isSignedIn() && (existing().authorId == request.auth.uid || get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid);
+      }
+    }
+
+    // Groups (Secondary collection sometimes used for discovery)
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().creatorId == request.auth.uid;
+      allow update: if isSignedIn() && request.auth.uid == existing().creatorId;
+      
+      match /posts/{postId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && incoming().authorId == request.auth.uid;
+      }
+    }
+  }
+}

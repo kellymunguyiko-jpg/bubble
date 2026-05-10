@@ -1,0 +1,6 @@
+{
+  "name": "Bubble Chat",
+  "description": "A high-performance real-time chat application featuring Bubble AI assistant, Instagram-inspired user search, and a full professional UI redesign.",
+  "requestFramePermissions": ["notifications", "microphone", "camera"],
+  "majorCapabilities": []
+}
